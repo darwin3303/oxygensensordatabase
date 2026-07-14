@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>O2 Sensor Inventory</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1C1C1E">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --bg:#1C1C1E;
+    --panel:#242428;
+    --panel-2:#2C2C31;
+    --line:#3A3A40;
+    --text:#EDEDED;
+    --muted:#9A9A9E;
+    --accent:#FF6B1A;
+    --accent-dim:#7A3A17;
+    --good:#4ADE80;
+    --warn:#FFC93C;
+    --bad:#FF4B4B;
+    --radius:14px;
+  }
+  body[data-theme="light"]{
+    --bg:#F4F2ED;
+    --panel:#FFFFFF;
+    --panel-2:#EFECE4;
+    --line:#DCD7CB;
+    --text:#242220;
+    --muted:#7A756C;
+    --accent:#E85D1F;
+    --accent-dim:#F3C4A6;
+    --good:#1E9E5A;
+    --warn:#B3810A;
+    --bad:#D93636;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    padding-bottom:env(safe-area-inset-bottom);
+    transition:background .2s,color .2s;
+  }
+  .stencil{
+    font-family:"Arial Narrow",Arial,sans-serif;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    font-weight:800;
+  }
+  header{
+    position:sticky;top:0;z-index:20;
+    background:var(--bg);
+    padding:16px 16px 8px;
+    border-bottom:1px solid var(--line);
+  }
+  header h1{
+    margin:0 0 12px;
+    font-size:19px;
+    display:flex;align-items:center;gap:10px;
+    justify-content:space-between;
+  }
+  header h1 .title-left{display:flex;align-items:center;gap:10px;}
+  .theme-toggle{
+    background:var(--panel);
+    border:1px solid var(--line);
+    color:var(--text);
+    width:34px;height:34px;
+    border-radius:9px;
+    font-size:16px;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    flex:0 0 auto;
+  }
+  header h1 .tag{
+    background:var(--accent);
+    color:#1C1C1E;
+    font-size:11px;
+    padding:3px 7px;
+    border-radius:4px;
+    font-weight:900;
+  }
+  nav.tabs{
+    display:flex;
+    background:var(--panel);
+    border-radius:10px;
+    padding:4px;
+    gap:4px;
+  }
+  nav.tabs button{
+    flex:1;
+    padding:10px 8px;
+    border:none;
+    background:transparent;
+    color:var(--muted);
+    font-weight:700;
+    font-size:13px;
+    border-radius:8px;
+    cursor:pointer;
+    letter-spacing:0.04em;
+  }
+  nav.tabs button.active{
+    background:var(--accent);
+    color:#1C1C1E;
+  }
+  main{padding:14px 16px 40px;max-width:640px;margin:0 auto;}
+  .hidden{display:none !important;}
+
+  /* Brand chip row */
+  .brand-row{
+    display:flex;gap:8px;overflow-x:auto;
+    padding-bottom:10px;margin-bottom:14px;
+    border-bottom:1px solid var(--line);
+    scrollbar-width:none;
+  }
+  .brand-row::-webkit-scrollbar{display:none;}
+  .brand-chip{
+    flex:0 0 auto;
+    padding:9px 14px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:999px;
+    color:var(--text);
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    white-space:nowrap;
+    display:flex;align-items:center;gap:6px;
+  }
+  .brand-chip.active{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:#1C1C1E;
+  }
+  .brand-chip .count{
+    font-size:10px;
+    opacity:0.75;
+  }
+  .brand-chip.add{
+    background:transparent;
+    border-style:dashed;
+    color:var(--accent);
+  }
+
+  .empty{
+    text-align:center;
+    color:var(--muted);
+    padding:40px 20px;
+    font-size:14px;
+    line-height:1.6;
+  }
+
+  /* sensor card */
+  .sensor-card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:14px;
+    margin-bottom:10px;
+  }
+  .sensor-top{
+    display:flex;justify-content:space-between;align-items:flex-start;gap:10px;
+  }
+  .sensor-num{
+    font-size:15px;font-weight:800;letter-spacing:0.02em;
+  }
+  .box-tag{
+    display:inline-block;
+    margin-top:4px;
+    font-size:11px;
+    color:var(--muted);
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    padding:2px 7px;
+    border-radius:5px;
+  }
+  .sensor-actions{display:flex;gap:6px;}
+  .icon-btn{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--muted);
+    width:30px;height:30px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:14px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .qty-row{
+    display:flex;align-items:center;gap:10px;margin-top:12px;
+  }
+  .stepper{
+    display:flex;align-items:center;
+    background:var(--panel-2);
+    border-radius:10px;
+    border:1px solid var(--line);
+  }
+  .stepper button{
+    width:34px;height:34px;
+    border:none;background:transparent;
+    color:var(--accent);font-size:18px;font-weight:800;
+    cursor:pointer;
+  }
+  .stepper .qty{
+    min-width:34px;text-align:center;font-weight:800;font-size:15px;
+  }
+  .gauge{
+    flex:1;height:8px;background:var(--panel-2);
+    border-radius:5px;overflow:hidden;border:1px solid var(--line);
+  }
+  .gauge > div{height:100%;border-radius:5px;transition:width .2s;}
+
+  .cars-block{margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);}
+  .cars-label{font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;font-weight:700;margin-bottom:6px;}
+  .car-chips{display:flex;flex-wrap:wrap;gap:6px;}
+  .car-chip{
+    font-size:11px;font-weight:600;
+    background:var(--panel-2);border:1px solid var(--line);
+    color:var(--text);padding:4px 9px;border-radius:999px;
+  }
+  .car-chip.more{color:var(--accent);border-style:dashed;cursor:pointer;background:transparent;}
+  .cars-empty{font-size:11px;color:var(--muted);font-style:italic;}
+
+  .search-bar{position:relative;}
+  .search-bar input{
+    width:100%;background:var(--panel);
+    border:1px solid var(--line);color:var(--text);
+    padding:13px 14px;border-radius:12px;font-size:15px;
+  }
+  .search-bar input:focus{outline:none;border-color:var(--accent);}
+  .result-card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:13px 14px;
+    margin-bottom:9px;
+  }
+  .result-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .result-brand{font-size:10px;color:var(--accent);font-weight:800;letter-spacing:.06em;text-transform:uppercase;}
+  .result-num{font-size:15px;font-weight:800;margin-top:2px;}
+  .result-meta{font-size:11px;color:var(--muted);margin-top:3px;}
+  .result-qty{
+    font-size:13px;font-weight:800;
+    background:var(--panel-2);border:1px solid var(--line);
+    padding:5px 10px;border-radius:8px;white-space:nowrap;
+  }
+  .result-actions{display:flex;gap:8px;margin-top:11px;}
+  .result-actions .btn{flex:1;text-align:center;padding:10px;font-size:12px;}
+  .result-actions .btn.install{background:var(--accent);border-color:var(--accent);color:#1C1C1E;}
+  .result-actions .btn.remove{color:var(--bad);}
+
+  .buy-card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:13px 14px;
+    margin-bottom:9px;
+  }
+  .buy-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .buy-brand{font-size:10px;color:var(--accent);font-weight:800;letter-spacing:.06em;text-transform:uppercase;}
+  .buy-num{font-size:15px;font-weight:800;margin-top:2px;}
+  .buy-meta{font-size:11px;color:var(--muted);margin-top:3px;}
+  .buy-qty{
+    font-size:13px;font-weight:800;
+    background:var(--panel-2);border:1px solid var(--line);
+    padding:5px 10px;border-radius:8px;white-space:nowrap;
+  }
+  .buy-actions{display:flex;gap:8px;margin-top:11px;}
+  .buy-actions .btn{flex:1;text-align:center;padding:10px;font-size:12px;}
+  .buy-actions .btn.add-inv{background:var(--good);border-color:var(--good);color:#0E1F14;}
+
+  .fab{
+    position:fixed;right:18px;bottom:22px;
+    width:54px;height:54px;border-radius:50%;
+    background:var(--accent);color:#1C1C1E;
+    border:none;font-size:26px;font-weight:900;
+    box-shadow:0 6px 16px rgba(0,0,0,.4);
+    cursor:pointer;z-index:15;
+  }
+
+  /* summary */
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:14px;margin-bottom:16px;
+  }
+  .panel h2{
+    margin:0 0 4px;font-size:13px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .panel .sub{font-size:11px;color:var(--muted);margin-bottom:12px;}
+  .row-item{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:9px 0;border-top:1px solid var(--line);
+    font-size:13px;
+  }
+  .row-item:first-of-type{border-top:none;}
+  .row-item .name{font-weight:700;}
+  .row-item .meta{color:var(--muted);font-size:11px;}
+  .pill{
+    font-size:11px;font-weight:800;padding:3px 8px;border-radius:999px;
+  }
+  .pill.bad{background:rgba(255,75,75,.15);color:var(--bad);}
+  .pill.warn{background:rgba(255,201,60,.15);color:var(--warn);}
+  .pill.good{background:rgba(74,222,128,.15);color:var(--good);}
+
+  .settings-row{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:10px 0;border-top:1px solid var(--line);
+    font-size:13px;
+  }
+  .settings-row:first-of-type{border-top:none;}
+  .settings-row input{
+    width:60px;background:var(--panel-2);border:1px solid var(--line);
+    color:var(--text);border-radius:7px;padding:6px;text-align:center;
+  }
+  .btn{
+    background:var(--panel-2);border:1px solid var(--line);
+    color:var(--text);padding:9px 12px;border-radius:9px;
+    font-size:12px;font-weight:700;cursor:pointer;
+  }
+  .btn.accent{background:var(--accent);border-color:var(--accent);color:#1C1C1E;}
+  .btn.danger{color:var(--bad);}
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+
+  /* modal */
+  .overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.6);
+    display:flex;align-items:flex-end;justify-content:center;
+    z-index:50;
+  }
+  .sheet{
+    background:var(--panel);
+    width:100%;max-width:640px;
+    border-radius:18px 18px 0 0;
+    padding:20px 18px calc(20px + env(safe-area-inset-bottom));
+  }
+  .sheet h3{margin:0 0 14px;font-size:15px;}
+  .field{margin-bottom:12px;}
+  .field label{
+    display:block;font-size:11px;color:var(--muted);
+    margin-bottom:5px;letter-spacing:.04em;
+  }
+  .field input{
+    width:100%;background:var(--panel-2);
+    border:1px solid var(--line);color:var(--text);
+    padding:11px;border-radius:9px;font-size:15px;
+  }
+  .sheet .btn-row{margin-top:16px;}
+  .sheet .btn-row .btn{flex:1;text-align:center;padding:12px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>
+    <span class="title-left"><span class="tag">O2</span> Sensor Inventory</span>
+    <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌙</button>
+  </h1>
+  <nav class="tabs">
+    <button data-tab="search" class="active">Search</button>
+    <button data-tab="brands">Brands</button>
+    <button data-tab="tobuy">To Buy</button>
+    <button data-tab="summary">Summary</button>
+  </nav>
+</header>
+
+<main>
+  <section id="tab-search">
+    <div class="search-bar">
+      <input type="search" id="searchInput" placeholder="Search part #, box, brand or car..." autocomplete="off">
+    </div>
+    <div class="sub" id="searchCount" style="margin:8px 2px 12px;color:var(--muted);font-size:12px;"></div>
+    <div id="searchResults"></div>
+  </section>
+
+  <section id="tab-brands" class="hidden">
+    <div class="brand-row" id="brandRow"></div>
+    <div id="sensorList"></div>
+  </section>
+
+  <section id="tab-tobuy" class="hidden">
+    <div id="toBuyList"></div>
+  </section>
+
+  <section id="tab-summary" class="hidden">
+    <div class="panel">
+      <h2>⚠ Low Quantity</h2>
+      <div class="sub">At or below the low-stock threshold</div>
+      <div id="lowStockList"></div>
+    </div>
+    <div class="panel">
+      <h2>⚡ Fast Moving</h2>
+      <div class="sub" id="fastMoveSub">Most used in the selected window</div>
+      <div id="fastMoveList"></div>
+    </div>
+    <div class="panel">
+      <h2>⚙ Settings</h2>
+      <div class="settings-row">
+        <span>Low-stock threshold</span>
+        <input type="number" id="thresholdInput" min="0">
+      </div>
+      <div class="settings-row">
+        <span>Fast-mover window (days)</span>
+        <input type="number" id="windowInput" min="1">
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="exportBtn">Export backup</button>
+        <button class="btn" id="importBtn">Import backup</button>
+        <button class="btn danger" id="resetBtn">Reset all data</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json" class="hidden">
+    </div>
+  </section>
+</main>
+
+<button class="fab hidden" id="fab">+</button>
+
+<div id="modalRoot"></div>
+
+<script>
+/* ---------- storage ---------- */
+const STORE_KEY = "o2inventory_v1";
+let state = load();
+if(!Array.isArray(state.toBuy)) state.toBuy = [];
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return {
+    brands:[], sensors:[], movements:[], toBuy:[],
+    settings:{threshold:2, windowDays:30},
+    activeBrand:null
+  };
+}
+function save(){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+  catch(e){ console.warn("storage unavailable in this preview context", e); }
+}
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+/* ---------- tabs ---------- */
+const tabButtons = document.querySelectorAll("nav.tabs button");
+const tabIds = ["search","brands","tobuy","summary"];
+tabButtons.forEach(b=>b.addEventListener("click", ()=>{
+  tabButtons.forEach(x=>x.classList.remove("active"));
+  b.classList.add("active");
+  tabIds.forEach(id=>document.getElementById("tab-"+id).classList.toggle("hidden", b.dataset.tab!==id));
+  document.getElementById("fab").classList.toggle("hidden", !["brands","tobuy"].includes(b.dataset.tab));
+  if(b.dataset.tab==="summary") renderSummary();
+  if(b.dataset.tab==="search") renderSearchResults();
+  if(b.dataset.tab==="tobuy") renderToBuy();
+}));
+
+/* ---------- modal helper ---------- */
+function openSheet(title, fieldsHtml, onSave, saveLabel="Save"){
+  const root = document.getElementById("modalRoot");
+  root.innerHTML = `
+    <div class="overlay" id="ov">
+      <div class="sheet">
+        <h3>${title}</h3>
+        ${fieldsHtml}
+        <div class="btn-row">
+          <button class="btn" id="cancelBtn">Cancel</button>
+          <button class="btn accent" id="saveBtn">${saveLabel}</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById("ov").addEventListener("click", e=>{ if(e.target.id==="ov") root.innerHTML=""; });
+  document.getElementById("cancelBtn").addEventListener("click", ()=> root.innerHTML="");
+  document.getElementById("saveBtn").addEventListener("click", ()=>{
+    if(onSave()!==false) root.innerHTML="";
+  });
+}
+
+/* ---------- brands ---------- */
+function renderBrands(){
+  const row = document.getElementById("brandRow");
+  row.innerHTML = "";
+  state.brands.forEach(b=>{
+    const count = state.sensors.filter(s=>s.brandId===b.id).length;
+    const chip = document.createElement("button");
+    chip.className = "brand-chip" + (state.activeBrand===b.id?" active":"");
+    chip.innerHTML = `${escapeHtml(b.name)} <span class="count">${count}</span>`;
+    chip.addEventListener("click", ()=>{ state.activeBrand=b.id; save(); renderBrands(); renderSensors(); });
+    chip.addEventListener("contextmenu", e=>{ e.preventDefault(); deleteBrand(b.id); });
+    row.appendChild(chip);
+  });
+  const add = document.createElement("button");
+  add.className = "brand-chip add";
+  add.textContent = "+ Brand";
+  add.addEventListener("click", addBrandDialog);
+  row.appendChild(add);
+}
+
+function addBrandDialog(){
+  openSheet("Add Brand", `
+    <div class="field"><label>Brand name</label><input id="fBrandName" placeholder="e.g. Denso, Bosch, NGK"></div>
+  `, ()=>{
+    const name = document.getElementById("fBrandName").value.trim();
+    if(!name) return false;
+    const b = {id:uid(), name};
+    state.brands.push(b);
+    state.activeBrand = b.id;
+    save(); renderBrands(); renderSensors();
+  }, "Add");
+}
+
+function deleteBrand(id){
+  const b = state.brands.find(x=>x.id===id);
+  if(!b) return;
+  if(!confirm(`Delete brand "${b.name}" and all its sensors?`)) return;
+  const sensorIds = state.sensors.filter(s=>s.brandId===id).map(s=>s.id);
+  state.sensors = state.sensors.filter(s=>s.brandId!==id);
+  state.movements = state.movements.filter(m=>!sensorIds.includes(m.sensorId));
+  state.brands = state.brands.filter(x=>x.id!==id);
+  if(state.activeBrand===id) state.activeBrand = state.brands[0]?.id || null;
+  save(); renderBrands(); renderSensors();
+}
+
+/* ---------- sensors ---------- */
+function renderSensors(){
+  const list = document.getElementById("sensorList");
+  list.innerHTML = "";
+  if(!state.brands.length){
+    list.innerHTML = `<div class="empty">No brands yet.<br>Tap "+ Brand" above to add your first one (e.g. Denso, Bosch, NTK).</div>`;
+    return;
+  }
+  if(!state.activeBrand) state.activeBrand = state.brands[0].id;
+  const brand = state.brands.find(b=>b.id===state.activeBrand);
+  const sensors = state.sensors.filter(s=>s.brandId===state.activeBrand);
+  if(!sensors.length){
+    list.innerHTML = `<div class="empty">No sensors under ${escapeHtml(brand.name)} yet.<br>Tap the + button to add one.</div>`;
+    return;
+  }
+  sensors.sort((a,b)=>a.sensorNumber.localeCompare(b.sensorNumber));
+  sensors.forEach(s=>{
+    const th = state.settings.threshold;
+    const pct = Math.max(4, Math.min(100, (s.quantity/(Math.max(th*3,6)))*100));
+    const color = s.quantity<=th ? "var(--bad)" : (s.quantity<=th*2 ? "var(--warn)" : "var(--good)");
+    const card = document.createElement("div");
+    card.className = "sensor-card";
+    card.innerHTML = `
+      <div class="sensor-top">
+        <div>
+          <div class="sensor-num">${escapeHtml(s.sensorNumber)}</div>
+          <div class="box-tag">Box: ${escapeHtml(s.box||"—")}</div>
+        </div>
+        <div class="sensor-actions">
+          <button class="icon-btn" data-act="edit">✎</button>
+          <button class="icon-btn" data-act="del">🗑</button>
+        </div>
+      </div>
+      <div class="qty-row">
+        <div class="stepper">
+          <button data-act="minus">−</button>
+          <div class="qty">${s.quantity}</div>
+          <button data-act="plus">+</button>
+        </div>
+        <div class="gauge"><div style="width:${pct}%;background:${color};"></div></div>
+      </div>
+      <div class="cars-block">
+        <div class="cars-label">Fits</div>
+        <div class="car-chips" data-cars></div>
+      </div>
+    `;
+    renderCarChips(card.querySelector('[data-cars]'), s.cars||[]);
+    card.querySelector('[data-act="edit"]').addEventListener("click", ()=>editSensorDialog(s.id));
+    card.querySelector('[data-act="del"]').addEventListener("click", ()=>deleteSensor(s.id));
+    card.querySelector('[data-act="minus"]').addEventListener("click", ()=>adjustQty(s.id,-1,"use"));
+    card.querySelector('[data-act="plus"]').addEventListener("click", ()=>adjustQty(s.id,1,"restock"));
+    list.appendChild(card);
+  });
+}
+
+function renderCarChips(container, cars, expanded=false){
+  container.innerHTML = "";
+  if(!cars.length){
+    container.innerHTML = `<span class="cars-empty">No cars linked yet — edit this sensor to add fitment</span>`;
+    return;
+  }
+  const LIMIT = 4;
+  const shown = expanded ? cars : cars.slice(0, LIMIT);
+  shown.forEach(c=>{
+    const chip = document.createElement("span");
+    chip.className = "car-chip";
+    chip.textContent = c;
+    container.appendChild(chip);
+  });
+  if(!expanded && cars.length > LIMIT){
+    const more = document.createElement("span");
+    more.className = "car-chip more";
+    more.textContent = `+${cars.length - LIMIT} more`;
+    more.addEventListener("click", ()=>renderCarChips(container, cars, true));
+    container.appendChild(more);
+  }
+}
+
+function adjustQty(id, delta, type){
+  const s = state.sensors.find(x=>x.id===id);
+  if(!s) return;
+  s.quantity = Math.max(0, s.quantity+delta);
+  state.movements.push({id:uid(), sensorId:id, change:delta, type, ts:Date.now()});
+  save(); renderSensors(); renderBrands();
+}
+
+function addSensorDialog(){
+  if(!state.activeBrand){ addBrandDialog(); return; }
+  openSheet("Add Sensor", `
+    <div class="field"><label>Sensor number / part #</label><input id="fNum" placeholder="e.g. 234-9147"></div>
+    <div class="field"><label>Quantity</label><input id="fQty" type="number" min="0" value="1"></div>
+    <div class="field"><label>Box / bin location</label><input id="fBox" placeholder="e.g. Shelf A - Box 3"></div>
+    <div class="field"><label>Compatible cars (comma separated)</label><input id="fCars" placeholder="e.g. 2015-2017 Toyota Camry, 2016-2018 Honda Accord"></div>
+  `, ()=>{
+    const num = document.getElementById("fNum").value.trim();
+    const qty = parseInt(document.getElementById("fQty").value)||0;
+    const box = document.getElementById("fBox").value.trim();
+    const cars = parseCars(document.getElementById("fCars").value);
+    if(!num) return false;
+    state.sensors.push({id:uid(), brandId:state.activeBrand, sensorNumber:num, quantity:qty, box, cars});
+    save(); renderSensors(); renderBrands();
+  }, "Add");
+}
+
+function editSensorDialog(id){
+  const s = state.sensors.find(x=>x.id===id);
+  if(!s) return;
+  openSheet("Edit Sensor", `
+    <div class="field"><label>Sensor number / part #</label><input id="fNum" value="${escapeAttr(s.sensorNumber)}"></div>
+    <div class="field"><label>Quantity</label><input id="fQty" type="number" min="0" value="${s.quantity}"></div>
+    <div class="field"><label>Box / bin location</label><input id="fBox" value="${escapeAttr(s.box||"")}"></div>
+    <div class="field"><label>Compatible cars (comma separated)</label><input id="fCars" value="${escapeAttr((s.cars||[]).join(", "))}" placeholder="e.g. 2015-2017 Toyota Camry, 2016-2018 Honda Accord"></div>
+  `, ()=>{
+    const num = document.getElementById("fNum").value.trim();
+    if(!num) return false;
+    s.sensorNumber = num;
+    s.quantity = Math.max(0, parseInt(document.getElementById("fQty").value)||0);
+    s.box = document.getElementById("fBox").value.trim();
+    s.cars = parseCars(document.getElementById("fCars").value);
+    save(); renderSensors(); renderBrands();
+  }, "Save");
+}
+
+function deleteSensor(id){
+  const s = state.sensors.find(x=>x.id===id);
+  if(!s) return;
+  if(!confirm(`Delete sensor "${s.sensorNumber}"?`)) return;
+  state.sensors = state.sensors.filter(x=>x.id!==id);
+  state.movements = state.movements.filter(m=>m.sensorId!==id);
+  save(); renderSensors(); renderBrands();
+}
+
+document.getElementById("fab").addEventListener("click", ()=>{
+  const active = document.querySelector("nav.tabs button.active")?.dataset.tab;
+  if(active==="tobuy") addToBuyDialog();
+  else addSensorDialog();
+});
+
+/* ---------- to buy ---------- */
+function renderToBuy(){
+  const list = document.getElementById("toBuyList");
+  list.innerHTML = "";
+  if(!state.toBuy.length){
+    list.innerHTML = `<div class="empty">Nothing on your buy list.<br>Tap the + button to note down a sensor you need to order.</div>`;
+    return;
+  }
+  const items = [...state.toBuy].sort((a,b)=>{
+    const bn = a.brandName.localeCompare(b.brandName);
+    return bn!==0 ? bn : a.sensorNumber.localeCompare(b.sensorNumber);
+  });
+  items.forEach(item=>{
+    const card = document.createElement("div");
+    card.className = "buy-card";
+    card.innerHTML = `
+      <div class="buy-top">
+        <div>
+          <div class="buy-brand">${escapeHtml(item.brandName)}</div>
+          <div class="buy-num">${escapeHtml(item.sensorNumber)}</div>
+          ${item.notes ? `<div class="buy-meta">${escapeHtml(item.notes)}</div>` : ""}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+          <span class="buy-qty">Need ${item.qty}</span>
+          <button class="icon-btn" data-act="del" title="Remove from list">🗑</button>
+        </div>
+      </div>
+      <div class="buy-actions">
+        <button class="btn add-inv" data-act="add">Add to inventory</button>
+      </div>
+    `;
+    card.querySelector('[data-act="add"]').addEventListener("click", ()=>addToInventoryFromToBuy(item.id));
+    card.querySelector('[data-act="del"]').addEventListener("click", ()=>{
+      state.toBuy = state.toBuy.filter(x=>x.id!==item.id);
+      save(); renderToBuy();
+    });
+    list.appendChild(card);
+  });
+}
+
+function addToBuyDialog(){
+  const brandOptions = state.brands.map(b=>`<option value="${escapeAttr(b.name)}">`).join("");
+  openSheet("Add to Buy List", `
+    <div class="field">
+      <label>Brand</label>
+      <input id="fBuyBrand" list="buyBrandOptions" placeholder="e.g. Denso, Bosch, NGK">
+      <datalist id="buyBrandOptions">${brandOptions}</datalist>
+    </div>
+    <div class="field"><label>Sensor number / part #</label><input id="fBuyNum" placeholder="e.g. 234-9147"></div>
+    <div class="field"><label>Quantity needed</label><input id="fBuyQty" type="number" min="1" value="1"></div>
+    <div class="field"><label>Note (optional)</label><input id="fBuyNote" placeholder="e.g. order from RockAuto, needed for Camry job"></div>
+  `, ()=>{
+    const brandName = document.getElementById("fBuyBrand").value.trim();
+    const sensorNumber = document.getElementById("fBuyNum").value.trim();
+    const qty = Math.max(1, parseInt(document.getElementById("fBuyQty").value)||1);
+    const notes = document.getElementById("fBuyNote").value.trim();
+    if(!brandName || !sensorNumber) return false;
+    state.toBuy.push({id:uid(), brandName, sensorNumber, qty, notes});
+    save(); renderToBuy();
+  }, "Add to list");
+}
+
+function addToInventoryFromToBuy(id){
+  const item = state.toBuy.find(x=>x.id===id);
+  if(!item) return;
+
+  let brand = state.brands.find(b=>b.name.toLowerCase()===item.brandName.toLowerCase());
+  if(!brand){
+    brand = {id:uid(), name:item.brandName};
+    state.brands.push(brand);
+  }
+
+  let sensor = state.sensors.find(s=>s.brandId===brand.id && s.sensorNumber.toLowerCase()===item.sensorNumber.toLowerCase());
+  if(sensor){
+    sensor.quantity += item.qty;
+  } else {
+    sensor = {id:uid(), brandId:brand.id, sensorNumber:item.sensorNumber, quantity:item.qty, box:"", cars:[]};
+    state.sensors.push(sensor);
+  }
+  state.movements.push({id:uid(), sensorId:sensor.id, change:item.qty, type:"restock", ts:Date.now()});
+
+  state.toBuy = state.toBuy.filter(x=>x.id!==id);
+  state.activeBrand = brand.id;
+
+  save();
+  renderToBuy(); renderBrands(); renderSensors(); renderSearchResults();
+  alert(`Added ${item.qty} × ${item.sensorNumber} to ${brand.name} in inventory.`);
+}
+
+/* ---------- summary ---------- */
+function renderSummary(){
+  const th = state.settings.threshold;
+  const windowDays = state.settings.windowDays;
+  document.getElementById("thresholdInput").value = th;
+  document.getElementById("windowInput").value = windowDays;
+  document.getElementById("fastMoveSub").textContent = `Most used in the last ${windowDays} days`;
+
+  // low stock
+  const low = state.sensors.filter(s=>s.quantity<=th).sort((a,b)=>a.quantity-b.quantity);
+  const lowEl = document.getElementById("lowStockList");
+  lowEl.innerHTML = low.length ? "" : `<div class="empty" style="padding:10px 0;">Nothing is low right now. Nice.</div>`;
+  low.forEach(s=>{
+    const brand = state.brands.find(b=>b.id===s.brandId);
+    const pillClass = s.quantity===0 ? "bad" : "warn";
+    const row = document.createElement("div");
+    row.className = "row-item";
+    row.innerHTML = `
+      <div>
+        <div class="name">${escapeHtml(s.sensorNumber)}</div>
+        <div class="meta">${escapeHtml(brand?.name||"—")} · Box ${escapeHtml(s.box||"—")}</div>
+      </div>
+      <span class="pill ${pillClass}">${s.quantity} left</span>
+    `;
+    lowEl.appendChild(row);
+  });
+
+  // fast movers
+  const cutoff = Date.now() - windowDays*24*60*60*1000;
+  const usageCount = {};
+  state.movements.forEach(m=>{
+    if(m.type==="use" && m.ts>=cutoff){
+      usageCount[m.sensorId] = (usageCount[m.sensorId]||0) + Math.abs(m.change);
+    }
+  });
+  const ranked = Object.entries(usageCount).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const fastEl = document.getElementById("fastMoveList");
+  fastEl.innerHTML = ranked.length ? "" : `<div class="empty" style="padding:10px 0;">No usage logged yet. Use the − button on a sensor when it's installed on a job to track this.</div>`;
+  ranked.forEach(([sensorId, count])=>{
+    const s = state.sensors.find(x=>x.id===sensorId);
+    if(!s) return;
+    const brand = state.brands.find(b=>b.id===s.brandId);
+    const row = document.createElement("div");
+    row.className = "row-item";
+    row.innerHTML = `
+      <div>
+        <div class="name">${escapeHtml(s.sensorNumber)}</div>
+        <div class="meta">${escapeHtml(brand?.name||"—")} · Box ${escapeHtml(s.box||"—")}</div>
+      </div>
+      <span class="pill good">${count} used</span>
+    `;
+    fastEl.appendChild(row);
+  });
+}
+
+document.getElementById("thresholdInput").addEventListener("change", e=>{
+  state.settings.threshold = Math.max(0, parseInt(e.target.value)||0);
+  save(); renderSummary();
+});
+document.getElementById("windowInput").addEventListener("change", e=>{
+  state.settings.windowDays = Math.max(1, parseInt(e.target.value)||30);
+  save(); renderSummary();
+});
+
+/* ---------- backup ---------- */
+document.getElementById("exportBtn").addEventListener("click", ()=>{
+  const blob = new Blob([JSON.stringify(state,null,2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "o2-inventory-backup.json";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+document.getElementById("importBtn").addEventListener("click", ()=>{
+  document.getElementById("importFile").click();
+});
+document.getElementById("importFile").addEventListener("change", e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = evt=>{
+    try{
+      const data = JSON.parse(evt.target.result);
+      if(!data.brands || !data.sensors) throw new Error("bad file");
+      state = Object.assign({brands:[],sensors:[],movements:[],toBuy:[],settings:{threshold:2,windowDays:30},activeBrand:null}, data);
+      save(); renderBrands(); renderSensors(); renderSummary(); renderToBuy(); renderSearchResults();
+      alert("Backup imported.");
+    }catch(err){ alert("That file doesn't look like a valid backup."); }
+  };
+  reader.readAsText(file);
+});
+document.getElementById("resetBtn").addEventListener("click", ()=>{
+  if(!confirm("This deletes ALL brands, sensors and history. Continue?")) return;
+  state = {brands:[], sensors:[], movements:[], toBuy:[], settings:{threshold:2, windowDays:30}, activeBrand:null};
+  save(); renderBrands(); renderSensors(); renderSummary(); renderToBuy(); renderSearchResults();
+});
+
+/* ---------- utils ---------- */
+function parseCars(str){
+  return (str||"").split(",").map(c=>c.trim()).filter(Boolean);
+}
+function escapeHtml(str){ return (str||"").replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(str){ return escapeHtml(str); }
+
+/* ---------- service worker (offline) ---------- */
+if("serviceWorker" in navigator){
+  window.addEventListener("load", ()=>{
+    navigator.serviceWorker.register("sw.js").catch(()=>{});
+  });
+}
+
+/* ---------- search ---------- */
+function renderSearchResults(){
+  const q = (document.getElementById("searchInput").value||"").trim().toLowerCase();
+  const list = document.getElementById("searchResults");
+  const countEl = document.getElementById("searchCount");
+  list.innerHTML = "";
+
+  if(!state.sensors.length){
+    countEl.textContent = "";
+    list.innerHTML = `<div class="empty">No sensors in inventory yet.<br>Add a brand and a sensor from the Brands tab to get started.</div>`;
+    return;
+  }
+
+  let results = state.sensors.map(s=>({s, brand: state.brands.find(b=>b.id===s.brandId)}));
+  if(q){
+    results = results.filter(({s,brand})=>{
+      const hay = [s.sensorNumber, s.box, brand?.name, ...(s.cars||[])].join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+  }
+  results.sort((a,b)=>{
+    const bn = (a.brand?.name||"").localeCompare(b.brand?.name||"");
+    return bn!==0 ? bn : a.s.sensorNumber.localeCompare(b.s.sensorNumber);
+  });
+
+  countEl.textContent = q ? `${results.length} match${results.length===1?"":"es"}` : `${results.length} sensor${results.length===1?"":"s"} in inventory`;
+
+  if(!results.length){
+    list.innerHTML = `<div class="empty">No sensors match "${escapeHtml(q)}".</div>`;
+    return;
+  }
+
+  results.forEach(({s, brand})=>{
+    const card = document.createElement("div");
+    card.className = "result-card";
+    card.innerHTML = `
+      <div class="result-top">
+        <div>
+          <div class="result-brand">${escapeHtml(brand?.name||"—")}</div>
+          <div class="result-num">${escapeHtml(s.sensorNumber)}</div>
+          <div class="result-meta">Box ${escapeHtml(s.box||"—")}${(s.cars&&s.cars.length)?" · Fits "+s.cars.length+" car"+(s.cars.length===1?"":"s"):""}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+          <span class="result-qty">${s.quantity} in stock</span>
+          <button class="icon-btn" data-act="del" title="Delete entry">🗑</button>
+        </div>
+      </div>
+      <div class="result-actions">
+        <button class="btn install" data-act="install" ${s.quantity<=0?"disabled":""}>Installed in a car (−1)</button>
+      </div>
+    `;
+    card.querySelector('[data-act="install"]').addEventListener("click", ()=>{
+      adjustQty(s.id, -1, "use");
+      renderSearchResults();
+    });
+    card.querySelector('[data-act="del"]').addEventListener("click", ()=>{
+      if(!confirm(`Remove "${s.sensorNumber}" (${brand?.name||"—"}) from inventory entirely?`)) return;
+      state.sensors = state.sensors.filter(x=>x.id!==s.id);
+      state.movements = state.movements.filter(m=>m.sensorId!==s.id);
+      save();
+      renderSearchResults(); renderBrands(); renderSensors();
+    });
+    list.appendChild(card);
+  });
+}
+document.getElementById("searchInput").addEventListener("input", renderSearchResults);
+
+/* ---------- theme ---------- */
+const THEME_KEY = "o2inventory_theme";
+function applyTheme(theme){
+  document.body.setAttribute("data-theme", theme);
+  document.getElementById("themeToggle").textContent = theme==="light" ? "☀️" : "🌙";
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.setAttribute("content", theme==="light" ? "#F4F2ED" : "#1C1C1E");
+  try{ localStorage.setItem(THEME_KEY, theme); }catch(e){}
+}
+function initTheme(){
+  let saved = null;
+  try{ saved = localStorage.getItem(THEME_KEY); }catch(e){}
+  if(!saved){
+    saved = (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) ? "light" : "dark";
+  }
+  applyTheme(saved);
+}
+document.getElementById("themeToggle").addEventListener("click", ()=>{
+  const current = document.body.getAttribute("data-theme")==="light" ? "light" : "dark";
+  applyTheme(current==="light" ? "dark" : "light");
+});
+
+/* ---------- init ---------- */
+initTheme();
+renderBrands();
+renderSensors();
+renderSearchResults();
+renderToBuy();
+</script>
+</body>
+</html>

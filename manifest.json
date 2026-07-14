@@ -1,0 +1,14 @@
+{
+  "name": "O2 Sensor Inventory",
+  "short_name": "O2 Inventory",
+  "description": "Garage inventory tracker for oxygen sensors by brand, box location and stock level.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1C1C1E",
+  "theme_color": "#1C1C1E",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
