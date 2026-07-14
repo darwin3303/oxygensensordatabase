@@ -1,6 +1,6 @@
 {
-  "name": "Nandana Auto Electricals - O2 Sensor Inventory",
-  "short_name": "O2 Inventory",
+  "name": "O2 Sensor Inventory",
+  "short_name": "O2 Sensor Inventory",
   "description": "Garage inventory tracker for oxygen sensors by brand, box location and stock level.",
   "start_url": "./index.html",
   "display": "standalone",
