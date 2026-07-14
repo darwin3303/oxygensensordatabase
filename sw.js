@@ -1,5 +1,5 @@
-const CACHE = "o2-inventory-v1";
-const FILES = ["./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
+const CACHE = "o2-inventory-v4";
+const FILES = ["./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png", "./icon-192-maskable.png", "./icon-512-maskable.png", "./apple-touch-icon.png"];
 
 self.addEventListener("install", e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES)));
@@ -13,12 +13,15 @@ self.addEventListener("activate", e=>{
   self.clients.claim();
 });
 
+// Network-first: always try to fetch the latest version first so updates
+// (new features, fixed icons, etc.) show up immediately when online.
+// Only fall back to the cached copy if the network request fails (offline).
 self.addEventListener("fetch", e=>{
   e.respondWith(
-    caches.match(e.request).then(cached=>cached || fetch(e.request).then(res=>{
+    fetch(e.request).then(res=>{
       const copy = res.clone();
       caches.open(CACHE).then(c=>c.put(e.request, copy));
       return res;
-    }).catch(()=>cached))
+    }).catch(()=> caches.match(e.request))
   );
 });
