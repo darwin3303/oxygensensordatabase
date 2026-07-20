@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>O2 Sensor Inventory</title>
 <meta name="apple-mobile-web-app-title" content="O2 Sensor Inventory">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1C1C1E">
@@ -595,15 +596,24 @@ function initCloudSync(){
         const remote = snap.data();
         state = Object.assign({brands:[],sensors:[],movements:[],toBuy:[],equivalents:[],settings:{threshold:2,windowDays:30},activeBrand:null}, remote);
         try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
+        fbReady = true;
+        setSyncStatus("synced");
+        renderAll();
       } else {
         // No shared doc yet — seed it with whatever is on this device right now.
-        fbDocRef().set(state).catch(err=>console.warn("initial cloud seed failed", err));
+        // Only report "synced" once this write actually succeeds — a doc that
+        // doesn't exist yet tells us nothing about whether we have permission.
+        fbDocRef().set(state).then(()=>{
+          fbReady = true;
+          setSyncStatus("synced");
+          renderAll();
+        }).catch(err=>{
+          console.error("Cloud sync write failed — check that Anonymous auth is enabled in Firebase Authentication, and that your Firestore rules match the garages/{garageId} path. Error:", err);
+          setSyncStatus("offline");
+        });
       }
-      fbReady = true;
-      setSyncStatus("synced");
-      renderAll();
     }, err=>{
-      console.warn("Firestore listen failed", err);
+      console.error("Firestore listen failed — check your Firestore rules. Error:", err);
       setSyncStatus("offline");
     });
   });
