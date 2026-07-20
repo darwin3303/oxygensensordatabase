@@ -604,7 +604,7 @@ function initCloudSync(){
     // streaming connection (it just hangs with no error) while normal HTTPS
     // requests like sign-in still work fine. This makes it fall back to
     // plain long-polling automatically when that happens.
-    fbDb.settings({ experimentalForceLongPolling: true, useFetchStreams: false, merge: true });
+    fbDb.settings({ experimentalForceLongPolling: true, useFetchStreams: false });
     fbEnabled = true;
   }catch(e){
     fbLastError = "Init failed: " + (e.message||e);
