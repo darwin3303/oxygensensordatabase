@@ -600,6 +600,11 @@ function initCloudSync(){
   try{
     firebase.initializeApp(firebaseConfig);
     fbDb = firebase.firestore();
+    // Some networks/VPNs/privacy tools silently block Firestore's default
+    // streaming connection (it just hangs with no error) while normal HTTPS
+    // requests like sign-in still work fine. This makes it fall back to
+    // plain long-polling automatically when that happens.
+    fbDb.settings({ experimentalAutoDetectLongPolling: true });
     fbEnabled = true;
   }catch(e){
     fbLastError = "Init failed: " + (e.message||e);
@@ -615,7 +620,18 @@ function initCloudSync(){
   firebase.auth().onAuthStateChanged(user=>{
     if(!user) return;
     fbUid = user.uid;
+
+    let gotFirstSnapshot = false;
+    const watchdog = setTimeout(()=>{
+      if(!gotFirstSnapshot){
+        fbLastError = "Connection to Firestore timed out after 10s with no response — likely blocked by a network, VPN, or privacy/ad-blocking tool. Try a different network (e.g. mobile data) or disable any VPN/ad-blocker and reload.";
+        setSyncStatus("offline");
+      }
+    }, 10000);
+
     fbDocRef().onSnapshot(snap=>{
+      gotFirstSnapshot = true;
+      clearTimeout(watchdog);
       if(snap.exists){
         const remote = snap.data();
         state = Object.assign({brands:[],sensors:[],movements:[],toBuy:[],equivalents:[],settings:{threshold:2,windowDays:30},activeBrand:null}, remote);
@@ -641,6 +657,8 @@ function initCloudSync(){
         });
       }
     }, err=>{
+      gotFirstSnapshot = true;
+      clearTimeout(watchdog);
       fbLastError = "Listen failed: " + (err.code||"") + " " + (err.message||err);
       console.error("Firestore listen failed — check your Firestore rules. Error:", err);
       setSyncStatus("offline");
