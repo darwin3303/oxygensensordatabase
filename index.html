@@ -113,12 +113,12 @@
   }
   nav.tabs button{
     flex:1;
-    padding:10px 8px;
+    padding:10px 4px;
     border:none;
     background:transparent;
     color:var(--muted);
     font-weight:700;
-    font-size:13px;
+    font-size:12px;
     border-radius:8px;
     cursor:pointer;
     letter-spacing:0.04em;
@@ -292,6 +292,42 @@
   .buy-actions .btn{flex:1;text-align:center;padding:10px;font-size:12px;}
   .buy-actions .btn.add-inv{background:var(--good);border-color:var(--good);color:#0E1F14;}
 
+  .eqv-card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:14px;
+    margin-bottom:12px;
+  }
+  .eqv-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px;}
+  .eqv-title{font-size:13px;font-weight:800;}
+  .eqv-title.untitled{color:var(--muted);font-weight:700;font-style:italic;}
+  .eqv-member{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:9px 0;border-top:1px solid var(--line);
+    gap:8px;
+  }
+  .eqv-member:first-of-type{border-top:none;}
+  .eqv-member .name{font-weight:700;font-size:13px;}
+  .eqv-member .meta{font-size:11px;color:var(--muted);margin-top:2px;}
+  .eqv-badge{
+    font-size:10px;font-weight:800;padding:3px 8px;border-radius:999px;
+    white-space:nowrap;
+  }
+  .eqv-badge.stocked{background:rgba(74,222,128,.15);color:var(--good);}
+  .eqv-badge.oos{background:rgba(255,75,75,.15);color:var(--bad);}
+  .eqv-badge.manual{background:var(--panel-2);color:var(--muted);border:1px solid var(--line);}
+  .eqv-remove{
+    background:none;border:none;color:var(--muted);
+    font-size:14px;cursor:pointer;padding:2px 6px;flex:0 0 auto;
+  }
+  .eqv-actions{display:flex;gap:8px;margin-top:10px;}
+  .eqv-actions .btn{flex:1;text-align:center;padding:9px;font-size:12px;}
+  .eqv-link{
+    font-size:11px;color:var(--accent);font-weight:700;
+    margin-top:6px;cursor:pointer;
+  }
+
   .fab{
     position:fixed;right:18px;bottom:22px;
     width:54px;height:54px;border-radius:50%;
@@ -400,6 +436,7 @@
     <button data-tab="search" class="active">Search</button>
     <button data-tab="brands">Brands</button>
     <button data-tab="tobuy">To Buy</button>
+    <button data-tab="equiv" title="Equivalent / cross-reference sensors">Equiv</button>
     <button data-tab="summary">Summary</button>
   </nav>
 </header>
@@ -420,6 +457,13 @@
 
   <section id="tab-tobuy" class="hidden">
     <div id="toBuyList"></div>
+  </section>
+
+  <section id="tab-equiv" class="hidden">
+    <div class="sub" style="color:var(--muted);font-size:12px;margin-bottom:12px;">
+      Group sensors that are interchangeable — from your own inventory or ones you know of but don't stock. Tap + to start a new match.
+    </div>
+    <div id="equivList"></div>
   </section>
 
   <section id="tab-summary" class="hidden">
@@ -494,12 +538,12 @@
    (each device keeps its own separate copy), exactly as it does now.
    ========================================================================= */
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyDKetqoH53i-boLVsA-nBrdqHP77UAvhcU",
+  authDomain: "oxygensensordatabase.firebaseapp.com",
+  projectId: "oxygensensordatabase",
+  storageBucket: "oxygensensordatabase.firebasestorage.app",
+  messagingSenderId: "765721300291",
+  appId: "1:765721300291:web:c3f3b37d7782244bdcb3f6"
 };
 // Change this if you ever want a second, separate inventory under the
 // same Firebase project (e.g. a second location).
@@ -521,7 +565,7 @@ function setSyncStatus(kind){
 }
 
 function renderAll(){
-  renderBrands(); renderSensors(); renderSearchResults(); renderToBuy();
+  renderBrands(); renderSensors(); renderSearchResults(); renderToBuy(); renderEquivalents();
   const activeTab = document.querySelector("nav.tabs button.active")?.dataset.tab;
   if(activeTab==="summary") renderSummary();
 }
@@ -549,7 +593,7 @@ function initCloudSync(){
     fbDocRef().onSnapshot(snap=>{
       if(snap.exists){
         const remote = snap.data();
-        state = Object.assign({brands:[],sensors:[],movements:[],toBuy:[],settings:{threshold:2,windowDays:30},activeBrand:null}, remote);
+        state = Object.assign({brands:[],sensors:[],movements:[],toBuy:[],equivalents:[],settings:{threshold:2,windowDays:30},activeBrand:null}, remote);
         try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
       } else {
         // No shared doc yet — seed it with whatever is on this device right now.
@@ -569,6 +613,7 @@ function initCloudSync(){
 const STORE_KEY = "o2inventory_v1";
 let state = load();
 if(!Array.isArray(state.toBuy)) state.toBuy = [];
+if(!Array.isArray(state.equivalents)) state.equivalents = [];
 
 function load(){
   try{
@@ -576,7 +621,7 @@ function load(){
     if(raw) return JSON.parse(raw);
   }catch(e){}
   return {
-    brands:[], sensors:[], movements:[], toBuy:[],
+    brands:[], sensors:[], movements:[], toBuy:[], equivalents:[],
     settings:{threshold:2, windowDays:30},
     activeBrand:null
   };
@@ -595,15 +640,16 @@ function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(
 
 /* ---------- tabs ---------- */
 const tabButtons = document.querySelectorAll("nav.tabs button");
-const tabIds = ["search","brands","tobuy","summary"];
+const tabIds = ["search","brands","tobuy","equiv","summary"];
 tabButtons.forEach(b=>b.addEventListener("click", ()=>{
   tabButtons.forEach(x=>x.classList.remove("active"));
   b.classList.add("active");
   tabIds.forEach(id=>document.getElementById("tab-"+id).classList.toggle("hidden", b.dataset.tab!==id));
-  document.getElementById("fab").classList.toggle("hidden", !["brands","tobuy"].includes(b.dataset.tab));
+  document.getElementById("fab").classList.toggle("hidden", !["brands","tobuy","equiv"].includes(b.dataset.tab));
   if(b.dataset.tab==="summary") renderSummary();
   if(b.dataset.tab==="search") renderSearchResults();
   if(b.dataset.tab==="tobuy") renderToBuy();
+  if(b.dataset.tab==="equiv") renderEquivalents();
 }));
 
 /* ---------- modal helper ---------- */
@@ -838,6 +884,7 @@ function deleteSensor(id){
 document.getElementById("fab").addEventListener("click", ()=>{
   const active = document.querySelector("nav.tabs button.active")?.dataset.tab;
   if(active==="tobuy") addToBuyDialog();
+  else if(active==="equiv") addEquivalentGroupDialog();
   else addSensorDialog();
 });
 
@@ -930,6 +977,151 @@ function addToInventoryFromToBuy(id){
   alert(`Added ${item.qty} × ${item.sensorNumber} to ${brand.name} in inventory.`);
 }
 
+/* ---------- equivalents ---------- */
+function sensorLabel(s){
+  const b = state.brands.find(x=>x.id===s.brandId);
+  return `${b?.name||"?"} — ${s.sensorNumber}`;
+}
+
+// Looks for a live match in the inventory for the brand/part# typed in.
+// Returns the sensor if found, so the member can be linked live (stock,
+// box, etc. always stay current); otherwise the entry is stored as a
+// manual cross-reference (e.g. a competitor's part that isn't stocked).
+function findInventoryMatch(brandName, sensorNumber){
+  const brand = state.brands.find(b=>b.name.toLowerCase()===brandName.toLowerCase().trim());
+  if(!brand) return null;
+  return state.sensors.find(s=>s.brandId===brand.id && s.sensorNumber.toLowerCase()===sensorNumber.toLowerCase().trim()) || null;
+}
+
+function equivalentGroupsForSensor(sensorId){
+  return state.equivalents.filter(g=>g.members.some(m=>m.type==="inventory" && m.sensorId===sensorId));
+}
+
+function renderEquivalents(){
+  const list = document.getElementById("equivList");
+  if(!list) return;
+  list.innerHTML = "";
+  if(!state.equivalents.length){
+    list.innerHTML = `<div class="empty">No equivalent matches yet.<br>Tap + to link sensors that are interchangeable — from your inventory or ones you just know fit.</div>`;
+    return;
+  }
+  state.equivalents.forEach(group=>{
+    const card = document.createElement("div");
+    card.className = "eqv-card";
+    const titleHtml = group.title
+      ? `<div class="eqv-title">${escapeHtml(group.title)}</div>`
+      : `<div class="eqv-title untitled">Equivalent group</div>`;
+    card.innerHTML = `
+      <div class="eqv-top">
+        ${titleHtml}
+        <button class="icon-btn" data-act="delgroup" title="Delete group">🗑</button>
+      </div>
+      <div data-members></div>
+      <div class="eqv-actions">
+        <button class="btn" data-act="addmember">+ Add equivalent</button>
+      </div>
+    `;
+    const membersEl = card.querySelector("[data-members]");
+    group.members.forEach((m, idx)=>{
+      const row = document.createElement("div");
+      row.className = "eqv-member";
+      if(m.type==="inventory"){
+        const s = state.sensors.find(x=>x.id===m.sensorId);
+        if(!s){
+          // linked sensor was deleted from inventory elsewhere — drop silently
+          return;
+        }
+        const brand = state.brands.find(b=>b.id===s.brandId);
+        const badgeClass = s.quantity<=0 ? "oos" : "stocked";
+        row.innerHTML = `
+          <div>
+            <div class="name">${escapeHtml(brand?.name||"?")} — ${escapeHtml(s.sensorNumber)}</div>
+            <div class="meta">Box ${escapeHtml(s.box||"—")}</div>
+          </div>
+          <span class="eqv-badge ${badgeClass}">${s.quantity} in stock</span>
+          <button class="eqv-remove" data-idx="${idx}">✕</button>
+        `;
+      } else {
+        row.innerHTML = `
+          <div>
+            <div class="name">${escapeHtml(m.brand)} — ${escapeHtml(m.sensorNumber)}</div>
+            <div class="meta">${m.note ? escapeHtml(m.note) : "Not in your inventory"}</div>
+          </div>
+          <span class="eqv-badge manual">Reference only</span>
+          <button class="eqv-remove" data-idx="${idx}">✕</button>
+        `;
+      }
+      row.querySelector(".eqv-remove").addEventListener("click", ()=>{
+        group.members.splice(idx,1);
+        if(group.members.length===0){
+          state.equivalents = state.equivalents.filter(g=>g.id!==group.id);
+        }
+        save(); renderEquivalents(); renderSearchResults();
+      });
+      membersEl.appendChild(row);
+    });
+    card.querySelector('[data-act="delgroup"]').addEventListener("click", ()=>{
+      if(!confirm("Delete this whole equivalent group?")) return;
+      state.equivalents = state.equivalents.filter(g=>g.id!==group.id);
+      save(); renderEquivalents(); renderSearchResults();
+    });
+    card.querySelector('[data-act="addmember"]').addEventListener("click", ()=>addMemberDialog(group.id));
+    list.appendChild(card);
+  });
+}
+
+function memberFieldsHtml(brandOptions){
+  return `
+    <div class="field">
+      <label>Brand</label>
+      <input id="fEqBrand" list="eqBrandOptions" placeholder="e.g. Denso, Bosch, NGK">
+      <datalist id="eqBrandOptions">${brandOptions}</datalist>
+    </div>
+    <div class="field"><label>Sensor number / part #</label><input id="fEqNum" placeholder="e.g. 234-9147"></div>
+    <div class="field"><label>Note (optional)</label><input id="fEqNote" placeholder="e.g. verified direct fit, 4-wire"></div>
+  `;
+}
+
+function buildMemberFromInputs(){
+  const brandName = document.getElementById("fEqBrand").value.trim();
+  const sensorNumber = document.getElementById("fEqNum").value.trim();
+  const note = document.getElementById("fEqNote").value.trim();
+  if(!brandName || !sensorNumber) return null;
+  const match = findInventoryMatch(brandName, sensorNumber);
+  if(match) return {type:"inventory", sensorId:match.id};
+  return {type:"manual", brand:brandName, sensorNumber, note};
+}
+
+function addEquivalentGroupDialog(){
+  const brandOptions = state.brands.map(b=>`<option value="${escapeAttr(b.name)}">`).join("");
+  openSheet("New Equivalent Match", `
+    <div class="field"><label>Group name (optional)</label><input id="fEqTitle" placeholder="e.g. Camry 2.5L universal fitment"></div>
+    ${memberFieldsHtml(brandOptions)}
+  `, ()=>{
+    const member = buildMemberFromInputs();
+    if(!member) return false;
+    const title = document.getElementById("fEqTitle").value.trim();
+    state.equivalents.push({id:uid(), title, members:[member]});
+    save(); renderEquivalents();
+  }, "Create");
+}
+
+function addMemberDialog(groupId){
+  const group = state.equivalents.find(g=>g.id===groupId);
+  if(!group) return;
+  const brandOptions = state.brands.map(b=>`<option value="${escapeAttr(b.name)}">`).join("");
+  openSheet("Add Equivalent Sensor", memberFieldsHtml(brandOptions), ()=>{
+    const member = buildMemberFromInputs();
+    if(!member) return false;
+    if(member.type==="inventory" && group.members.some(m=>m.type==="inventory" && m.sensorId===member.sensorId)){
+      alert("That sensor is already in this group.");
+      return false;
+    }
+    group.members.push(member);
+    save(); renderEquivalents();
+  }, "Add");
+}
+
 /* ---------- summary ---------- */
 function renderSummary(){
   const th = state.settings.threshold;
@@ -1014,8 +1206,8 @@ document.getElementById("importFile").addEventListener("change", e=>{
     try{
       const data = JSON.parse(evt.target.result);
       if(!data.brands || !data.sensors) throw new Error("bad file");
-      state = Object.assign({brands:[],sensors:[],movements:[],toBuy:[],settings:{threshold:2,windowDays:30},activeBrand:null}, data);
-      save(); renderBrands(); renderSensors(); renderSummary(); renderToBuy(); renderSearchResults();
+      state = Object.assign({brands:[],sensors:[],movements:[],toBuy:[],equivalents:[],settings:{threshold:2,windowDays:30},activeBrand:null}, data);
+      save(); renderBrands(); renderSensors(); renderSummary(); renderToBuy(); renderSearchResults(); renderEquivalents();
       alert("Backup imported.");
     }catch(err){ alert("That file doesn't look like a valid backup."); }
   };
@@ -1023,8 +1215,8 @@ document.getElementById("importFile").addEventListener("change", e=>{
 });
 document.getElementById("resetBtn").addEventListener("click", ()=>{
   if(!confirm("This deletes ALL brands, sensors and history. Continue?")) return;
-  state = {brands:[], sensors:[], movements:[], toBuy:[], settings:{threshold:2, windowDays:30}, activeBrand:null};
-  save(); renderBrands(); renderSensors(); renderSummary(); renderToBuy(); renderSearchResults();
+  state = {brands:[], sensors:[], movements:[], toBuy:[], equivalents:[], settings:{threshold:2, windowDays:30}, activeBrand:null};
+  save(); renderBrands(); renderSensors(); renderSummary(); renderToBuy(); renderSearchResults(); renderEquivalents();
 });
 
 /* ---------- utils ---------- */
@@ -1145,6 +1337,7 @@ renderBrands();
 renderSensors();
 renderSearchResults();
 renderToBuy();
+renderEquivalents();
 initCloudSync();
 </script>
 </body>
