@@ -1,4 +1,4 @@
-const CACHE = "o2-inventory-v12";
+const CACHE = "o2-inventory-v13";
 const FILES = ["./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png", "./icon-192-maskable.png", "./icon-512-maskable.png", "./apple-touch-icon.png"];
 
 self.addEventListener("install", e=>{
