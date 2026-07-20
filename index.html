@@ -556,14 +556,35 @@ let fbReady = false; // becomes true once the first snapshot has been applied
 
 function fbDocRef(){ return fbDb.collection("garages").doc(GARAGE_DOC_ID); }
 
+let fbLastError = null;
+let fbLastSyncTime = null;
+let fbLastWriteTime = null;
+let fbUid = null;
+
 function setSyncStatus(kind){
   const el = document.getElementById("syncStatus");
   if(!el) return;
   el.classList.remove("status-synced","status-offline","status-off");
-  if(kind==="synced"){ el.textContent="☁"; el.classList.add("status-synced"); el.title="Synced across devices"; }
-  else if(kind==="offline"){ el.textContent="⚠"; el.classList.add("status-offline"); el.title="Cloud sync configured but offline right now — showing local data"; }
-  else { el.textContent="☁"; el.classList.add("status-off"); el.title="Cloud sync not set up — this device only. See the CLOUD SYNC SETUP comment in index.html"; }
+  if(kind==="synced"){ el.textContent="☁"; el.classList.add("status-synced"); el.title="Synced across devices — tap for details"; fbLastSyncTime = Date.now(); }
+  else if(kind==="offline"){ el.textContent="⚠"; el.classList.add("status-offline"); el.title="Cloud sync configured but offline right now — tap for details"; }
+  else { el.textContent="☁"; el.classList.add("status-off"); el.title="Cloud sync not set up — tap for details"; }
 }
+
+function showSyncDiagnostics(){
+  const rows = [
+    ["Cloud sync configured", fbEnabled ? "Yes" : "No — firebaseConfig still has placeholder values"],
+    ["Signed in", fbUid ? `Yes (${fbUid})` : "No"],
+    ["Document path", fbEnabled ? `garages/${GARAGE_DOC_ID}` : "—"],
+    ["Last successful sync", fbLastSyncTime ? new Date(fbLastSyncTime).toLocaleTimeString() : "Never"],
+    ["Last successful write", fbLastWriteTime ? new Date(fbLastWriteTime).toLocaleTimeString() : "Never"],
+    ["Last error", fbLastError || "None"],
+  ];
+  const html = rows.map(([k,v])=>`
+    <div class="settings-row"><span>${escapeHtml(k)}</span><span style="text-align:right;max-width:60%;word-break:break-word;color:var(--muted);font-size:12px;">${escapeHtml(String(v))}</span></div>
+  `).join("");
+  openSheet("Sync Diagnostics", html, ()=>{}, "Close");
+}
+document.getElementById("syncStatus").addEventListener("click", showSyncDiagnostics);
 
 function renderAll(){
   renderBrands(); renderSensors(); renderSearchResults(); renderToBuy(); renderEquivalents();
@@ -581,22 +602,26 @@ function initCloudSync(){
     fbDb = firebase.firestore();
     fbEnabled = true;
   }catch(e){
+    fbLastError = "Init failed: " + (e.message||e);
     console.warn("Firebase init failed", e);
     setSyncStatus("off");
     return;
   }
   firebase.auth().signInAnonymously().catch(err=>{
+    fbLastError = "Sign-in failed: " + (err.code||"") + " " + (err.message||err);
     console.warn("Firebase auth failed", err);
     setSyncStatus("offline");
   });
   firebase.auth().onAuthStateChanged(user=>{
     if(!user) return;
+    fbUid = user.uid;
     fbDocRef().onSnapshot(snap=>{
       if(snap.exists){
         const remote = snap.data();
         state = Object.assign({brands:[],sensors:[],movements:[],toBuy:[],equivalents:[],settings:{threshold:2,windowDays:30},activeBrand:null}, remote);
         try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
         fbReady = true;
+        fbLastError = null;
         setSyncStatus("synced");
         renderAll();
       } else {
@@ -605,14 +630,18 @@ function initCloudSync(){
         // doesn't exist yet tells us nothing about whether we have permission.
         fbDocRef().set(state).then(()=>{
           fbReady = true;
+          fbLastError = null;
+          fbLastWriteTime = Date.now();
           setSyncStatus("synced");
           renderAll();
         }).catch(err=>{
+          fbLastError = "Write failed: " + (err.code||"") + " " + (err.message||err);
           console.error("Cloud sync write failed — check that Anonymous auth is enabled in Firebase Authentication, and that your Firestore rules match the garages/{garageId} path. Error:", err);
           setSyncStatus("offline");
         });
       }
     }, err=>{
+      fbLastError = "Listen failed: " + (err.code||"") + " " + (err.message||err);
       console.error("Firestore listen failed — check your Firestore rules. Error:", err);
       setSyncStatus("offline");
     });
@@ -640,7 +669,11 @@ function save(){
   try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
   catch(e){ console.warn("storage unavailable in this preview context", e); }
   if(fbEnabled && fbDb){
-    fbDocRef().set(state).catch(err=>{
+    fbDocRef().set(state).then(()=>{
+      fbLastWriteTime = Date.now();
+      fbLastError = null;
+    }).catch(err=>{
+      fbLastError = "Write failed: " + (err.code||"") + " " + (err.message||err);
       console.warn("cloud save failed", err);
       setSyncStatus("offline");
     });
