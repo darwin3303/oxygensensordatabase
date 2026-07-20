@@ -503,9 +503,9 @@
 <div id="modalRoot"></div>
 
 <!-- Cloud sync (Firebase Firestore). See CLOUD SYNC SETUP comment at the top of the script below. -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="vendor/firebase-app-compat.js"></script>
+<script src="vendor/firebase-auth-compat.js"></script>
+<script src="vendor/firebase-firestore-compat.js"></script>
 
 <script>
 /* =========================================================================
@@ -604,7 +604,7 @@ function initCloudSync(){
     // streaming connection (it just hangs with no error) while normal HTTPS
     // requests like sign-in still work fine. This makes it fall back to
     // plain long-polling automatically when that happens.
-    fbDb.settings({ experimentalAutoDetectLongPolling: true });
+    fbDb.settings({ experimentalForceLongPolling: true, useFetchStreams: false });
     fbEnabled = true;
   }catch(e){
     fbLastError = "Init failed: " + (e.message||e);
