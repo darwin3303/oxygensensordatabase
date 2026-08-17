@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: o2-sensor-inventory
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        sync: false # you'll paste your Neon connection string in here during setup
